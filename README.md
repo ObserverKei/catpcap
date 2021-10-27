@@ -60,7 +60,12 @@ int catpcap(int file_array_count, char **file_array, p_catpcap_hook_t *hook, voi
 
 过滤 1.pcap 中 所有 UDP 协议的包 (支持使用支持LDAP的=符号过滤src_ip,dst_ip,src_port,dst_port,transport)
 ```
-./demo (transport=UDP) 1.pcap
+demo (transport=UDP) 1.pcap
+```
+
+过滤 1.pcap 中 端口为 481 的包
+```
+demo '(&(src_port=481)(transport=TCP))' unittest/1.pcap
 ```
 
 ## 单元测试
