@@ -241,16 +241,19 @@ int catpcap_cmp_eq(filter_st *f, int s, session_t *sess)
 					ldapexpr_debug("catch transport:%s\n", f->s.value);
 					return 0;
 				}
+				break;
 			case SESSION_TRANSPORT_UDP:
 				if (!strcmp("UDP", f->s.value)) {
 					ldapexpr_debug("catch transport:%s\n", f->s.value);
 					return 0;
 				}
+				break;
 			case SESSION_TRANSPORT_ICMP: 
 				if (!strcmp("ICMP", f->s.value)) {
 					ldapexpr_debug("catch transport:%s\n", f->s.value);
 					return 0;
 				}
+				break;
 			default:
 				ldapexpr_debug("SESSION_TRANSPORT_UNKNOW\n");
 				return -1;
@@ -274,17 +277,20 @@ static int filter_catpcap(filter_st *f, int s, session_t *sess)
 		case FT_AND:
 			ret_left = filter_catpcap(f->m.left, s + 1, sess);
 			ret_right = filter_catpcap(f->m.right, s + 1, sess);
-			if ((!ret_left) && (!ret_right))
+			if ((!ret_left) && (!ret_right)) 
 				return 0;
+			break;
 		case FT_OR:
 			ret_left = filter_catpcap(f->m.left, s + 1, sess);
 			ret_right = filter_catpcap(f->m.right, s + 1, sess);
 			if ((!ret_left) || (!ret_right))
 				return 0;
+			break;
 		case FT_NOT:
 			ret_left = filter_catpcap(f->m.left, s + 1, sess);
 			if (1 == ret_left)
 				return 0;
+			break;
 		case FT_EQ:
 			return catpcap_cmp_eq(f, s, sess);
 		case FT_NE:
@@ -296,6 +302,7 @@ static int filter_catpcap(filter_st *f, int s, session_t *sess)
 			ldapexpr_debug("CAN'T USE f->type");
 			return -1;
 	}
+	ldapexpr_debug("type(%s) cmp fail\n", s_ft_tab[f->type]);
 	
 	return -3;
 }
