@@ -18,33 +18,31 @@ char g_ldap_debug_enable = 1;
 int ldap_cmp_src_ip(filter_st *f, void *data)
 {
 	if (!f || !data)
-		return -1;
+		return -2;
 
-	session_t *sess = (session_t *)data;
-	char buff[128] = {0};	
+	session_t *sess = (session_t *)data;	
+	union {
+		uint32_t addr_ip;
+		uint8_t ipv4_all[4];
+	} ip;
+
+	if (4 != sscanf(f->s.value, "%hhu.%hhu.%hhu.%hhu", &ip.ipv4_all[0], &ip.ipv4_all[1], 
+		&ip.ipv4_all[2], &ip.ipv4_all[3])) 
+		return -2;
 	
 	switch (f->type) {			
 		case FT_EQ:
-
-			snprintf(buff, sizeof(buff)-1, "%u.%u.%u.%u", NIPQUAD(sess->src_ip.addr_ip));
-			buff[sizeof(buff)-1] = '\0';
-			
-			if (!strcmp(buff, f->s.value)) {
-				ldap_debug("catch src_ip:%s\n", buff);
-				return 0;
-			}			
-			break;
-
+			return !(sess->src_ip.addr_ip == ip.addr_ip);
 		case FT_NE:
-			break;
+			return !(sess->src_ip.addr_ip != ip.addr_ip);
 		case FT_LT:
-			break;
+			return !(sess->src_ip.addr_ip > ip.addr_ip);
 		case FT_GT:
-			break;
+			return !(sess->src_ip.addr_ip < ip.addr_ip);
 		case FT_LTE:
-			break;
+			return !(sess->src_ip.addr_ip <= ip.addr_ip);
 		case FT_GTE:
-			break;
+			return !(sess->src_ip.addr_ip >= ip.addr_ip);
 		default:
 			return -1;
 	}
@@ -55,33 +53,31 @@ int ldap_cmp_src_ip(filter_st *f, void *data)
 int ldap_cmp_dst_ip(filter_st *f, void *data)
 {
 	if (!f || !data)
-		return -1;
+		return -2;
 
-	session_t *sess = (session_t *)data;
-	char buff[128] = {0};
+	session_t *sess = (session_t *)data;	
+	union {
+		uint32_t addr_ip;
+		uint8_t ipv4_all[4];
+	} ip;
+
+	if (4 != sscanf(f->s.value, "%hhu.%hhu.%hhu.%hhu", &ip.ipv4_all[0], &ip.ipv4_all[1], 
+		&ip.ipv4_all[2], &ip.ipv4_all[3]))
+		return -2;
 	
 	switch (f->type) {			
 		case FT_EQ:
-
-			snprintf(buff, sizeof(buff)-1, "%u.%u.%u.%u", NIPQUAD(sess->dst_ip.addr_ip));
-			buff[sizeof(buff)-1] = '\0';
-			
-			if (!strcmp(buff, f->s.value)) {
-				ldap_debug("catch dst_ip:%s\n", buff);
-				return 0;
-			}	
-			break;
-			
+			return !(sess->dst_ip.addr_ip == ip.addr_ip);
 		case FT_NE:
-			break;
+			return !(sess->dst_ip.addr_ip != ip.addr_ip);
 		case FT_LT:
-			break;
+			return !(sess->dst_ip.addr_ip > ip.addr_ip);
 		case FT_GT:
-			break;
+			return !(sess->dst_ip.addr_ip < ip.addr_ip);
 		case FT_LTE:
-			break;
+			return !(sess->dst_ip.addr_ip <= ip.addr_ip);
 		case FT_GTE:
-			break;
+			return !(sess->dst_ip.addr_ip >= ip.addr_ip);
 		default:
 			return -1;
 	}
@@ -95,26 +91,22 @@ int ldap_cmp_src_port(filter_st *f, void *data)
 		return -1;
 
 	session_t *sess = (session_t *)data;
-	uint16_t l = 0;
+	uint16_t l = strtol(f->s.value, NULL, 0);
+	uint16_t src_port = ntohs(sess->src_port);
 	
 	switch (f->type) {			
 		case FT_EQ:
-			l = strtol(f->s.value, NULL, 0);
-			if (ntohs(l) == sess->src_port) {
-				ldap_debug("catch src_port:%u\n", l);
-				return 0;
-			}		
-			break;
+			return !(src_port == l);
 		case FT_NE:
-			break;
+			return !(src_port != l);
 		case FT_LT:
-			break;
+			return !(src_port < l);
 		case FT_GT:
-			break;
+			return !(src_port > l);
 		case FT_LTE:
-			break;
+			return !(src_port <= l);
 		case FT_GTE:
-			break;
+			return !(src_port >= l);
 		default:
 			return -1;
 	}
@@ -128,35 +120,28 @@ int ldap_cmp_dst_port(filter_st *f, void *data)
 		return -1;
 
 	session_t *sess = (session_t *)data;
-	uint16_t l = 0;
-	
+	uint16_t l = strtol(f->s.value, NULL, 0);
+	uint16_t dst_port = ntohs(sess->dst_port);
+
 	switch (f->type) {			
 		case FT_EQ:
-			l = strtol(f->s.value, NULL, 0);
-			if (ntohs(l) == sess->dst_port) {
-				ldap_debug("catch dst_port:%u\n", l);
-				return 0;
-			}
-			break;
+			return !(dst_port == l);
 		case FT_NE:
-			break;
+			return !(dst_port != l);
 		case FT_LT:
-			break;
+			return !(dst_port < l);
 		case FT_GT:
-			break;
+			return !(dst_port > l);
 		case FT_LTE:
-			break;
+			return !(dst_port <= l);
 		case FT_GTE:
-			break;
+			return !(dst_port >= l);
 		default:
 			return -1;
 	}
 
 	return 1;
 }
-
-
-
 
 int ldap_cmp_transport(filter_st *f, void *data)
 {
@@ -196,15 +181,10 @@ int ldap_cmp_transport(filter_st *f, void *data)
 			}			
 			break;
 		case FT_NE:
-			break;
 		case FT_LT:
-			break;
 		case FT_GT:
-			break;
 		case FT_LTE:
-			break;
 		case FT_GTE:
-			break;
 		default:
 			return -1;
 	}

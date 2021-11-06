@@ -8,6 +8,9 @@ OUTDIR ?= _out
 all: build
 
 build: 
+	if [ ! -d ${OUTDIR} ]; then install -d ${OUTDIR}; fi
+	if [ ! -d ${OUTDIR}/bin ]; then install -d ${OUTDIR}/bin; fi
+	if [ ! -d ${OUTDIR}/lib ]; then install -d ${OUTDIR}/lib; fi
 	cd tools && $(MAKE) all
 	cd source && $(MAKE) all
 
@@ -21,7 +24,4 @@ test:
 
 install:
 	if [ ! -d ${DESTDIR} ]; then install -d ${DESTDIR}; fi
-	if [ ! -d ${OUTDIR} ]; then install -d ${OUTDIR}; fi
-	if [ ! -d ${OUTDIR}/bin ]; then install -d ${OUTDIR}/bin; fi
-	if [ ! -d ${OUTDIR}/lib ]; then install -d ${OUTDIR}/lib; fi
 	cp -rvf $(OUTDIR)/* $(DESTDIR)

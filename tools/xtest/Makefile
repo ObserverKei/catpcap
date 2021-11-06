@@ -1,3 +1,4 @@
+TYPE   := app
 CFILES 	= $(wildcard *.c)
 OBJS    = $(CFILES:.c=.o)
 CC		= gcc
@@ -9,7 +10,8 @@ TARGET	= xtest
 .PHONY: all clean cleanall libxtest
 
 $(TARGET): $(OBJS) libxtest
-	gcc $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
+	if [ ! -d ${OUTDIR} ]; then install -d ${OUTDIR}; fi
+	gcc $(CFLAGS) -o $(OUTDIR)/$(TARGET) $(OBJS) $(LIBS)
 
 libxtest:
 	(cd libxtest && make)
@@ -19,8 +21,11 @@ debug:
 
 clean:
 	(cd libxtest && make clean)
-	rm -f *.o *.output *.stackdump $(TARGET)
+	rm -f *.o *.output *.stackdump $(OUTDIR)/$(TARGET)
 
 install:
 	(cd libxtest && make install)
 	cp -f $(TARGET) /usr/bin && chmod a+x /usr/bin/$(TARGET)
+
+CUTDIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+include ../../tools/makefiles/app.mk

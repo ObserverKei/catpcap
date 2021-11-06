@@ -24,10 +24,10 @@ $(OUTDIR)/%.o:%.c
 	$(CC) -c -o $@ $^ $(FLAG) $(INCLUDES)
 
 $(OUTDIR)/demo.o:build 
-	$(CC) -c -o $@ demo.C $(FLAG) $(INCLUDES)
+	$(CC) -c -o $(OUTDIR)/$@ demo.C $(FLAG) $(INCLUDES)
 
 clean: 
-	rm -rf $(OUTDIR)
+	rm -rf $(OUTDIR)/$(TARGET)
 
 build:
 	if [ ! -d ${OUTDIR} ]; then install -d ${OUTDIR}; fi
@@ -39,9 +39,8 @@ test: build
 	$(CC) -D XTEST -o $(OUTDIR)/test $(OBHS) $(TESTFILE) $(INCLUDES) $(LIBS) 
 	$(OUTDIR)/test --fork
 
-demo: $(OUTDIR)/demo.o $(OUTDIR)/$(OBHS:.c=.o)
-	$(CC) $^ $(INCLUDES) -o $(OUTDIR)/demo
-	mv *.o $(OUTDIR)
+demo: 
+	make &&	cd $(OUTDIR) &&	$(CC) -o $(OUTDIR)/demo $(CUTDIR)/demo.C $^ $(OBHS:.c=.o) $(INCLUDES) $(LIBS)
 	echo "usg: $(OUTDIR)/demo '(src_port=481)' unittest/1.pcap"
 
 memcheck: demo

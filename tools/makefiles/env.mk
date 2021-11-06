@@ -6,5 +6,5 @@ export GCOV_FILE ?= $(OBHS:.c=.gcno) $(CFILE:.C=.gcno)
 export FLAG := -fPIC -Wall -g #-fprofile-arcs -ftest-coverage 
 export BASEDIR := $(shell cd ../../ && pwd)
 export OUTDIR ?= $(BASEDIR)/_out
-export LIBS += -L$(OUTDIR)/lib
+export LIBS += -L$(BASEDIR)/_out/lib
 export INCLUDES += -I$(BASEDIR)/source/include -I$(BASEDIR)/tools

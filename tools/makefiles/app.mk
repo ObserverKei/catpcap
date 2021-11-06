@@ -20,3 +20,4 @@ CC = gcc
 else##($(findstring .c, $(OBJS)),)
 CC = gcc
 endif##($(findstring .c, $(OBJS)),)
+

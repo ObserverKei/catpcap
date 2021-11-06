@@ -11,6 +11,7 @@ extern "C" {
 typedef struct l3_addr_st {
 #define addr_ip  ipv6[3]			//ipv4
 #define addr_ip6 ipv6				//ipv6
+#define addr_all ipv6               //成员
 	uint32_t ipv6[4];
 } l3_addr_t;
 
