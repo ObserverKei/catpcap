@@ -1,14 +1,14 @@
 TYPE := so
 TARGET = libcatpcap.so
 
-OUTDIR := _out
+OUTDIR ?= _out
 TESTFILE := $(wildcard unittest/*.c) 
 
 OBHS=$(wildcard *.c)
-INCLUDES += -I../include -I./unittest -I../../tools/ldapexpr/
-LIBS = 
+INCLUDES += -I../include -I./unittest 
+LIBS += -lldapexpr
 PRIVATE_FLAG += -shared #-Wl
-PRIVATE_COM_CODE += ../../tools/ldapexpr/ldapexpr.c
+PRIVATE_COM_CODE += 
 OBHS += $(PRIVATE_COM_CODE)
 
 $(TARGET):$(OBHS:.c=.o)

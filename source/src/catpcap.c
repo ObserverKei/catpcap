@@ -10,7 +10,7 @@
 #include <arpa/inet.h>
 
 #include "catpcap.h"
-#include "ldapexpr.h"
+#include "ldapexpr/ldapexpr.h"
 #include "ldap.h"
 
 #define catpcap_debug(fmt, ...) do {\

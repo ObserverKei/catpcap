@@ -5,7 +5,7 @@
 #include <arpa/inet.h>
 
 
-#include "ldapexpr.h"
+#include "ldapexpr/ldapexpr.h"
 #include "session.h"
 
 #define ldap_debug(fmt, ...) do {\
