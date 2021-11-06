@@ -13,7 +13,7 @@
 		if (g_ldapexpr_debug_enable) printf("%s %s (%d) "fmt,__FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);\
 	} while (0)
 	
-char g_ldapexpr_debug_enable = 1;
+char g_ldapexpr_debug_enable = 0;
 
 static const char *s_ft_tab[] = {
 	"=",
@@ -160,7 +160,7 @@ failed:
 	return NULL;
 }
 
-filter_st *filter_parse(const char *txt)
+filter_st *filter_init(const char *txt)
 {
 	uint32_t pos = 0;
 	filter_st *filt = filter_parse_(txt, &pos);
@@ -193,111 +193,114 @@ static void filter_debug_(filter_st *f, int s)
 	}
 }
 
-// return 0 相等， 1 不相等，-1无法比较
-int catpcap_cmp_eq(filter_st *f, int s, session_t *sess)
+typedef struct ldapexpr_cmp_st {
+	size_t count;
+	ldapexpr_hook_kv_t arr[0];
+} ldapexpr_cmp_t;
+
+static ldapexpr_cmp_t *s_ldapexpr_cmp = NULL;
+
+
+//return -1 is fail, 0 is cmp done
+static int ldapexpr_cmp(filter_st *f, void *data)
 {
-	if (!strcmp("src_ip", f->s.subject)) {
-		
-		char buff[128] = {0};
-		snprintf(buff, sizeof(buff)-1, "%u.%u.%u.%u", NIPQUAD(sess->src_ip.addr_ip));
-		buff[sizeof(buff)-1] = '\0';
-		
-		if (!strcmp(buff, f->s.value)) {
-			ldapexpr_debug("catch src_ip:%s\n", buff);
-			return 0;
+	if (!s_ldapexpr_cmp) 
+		return -1;
+
+	size_t i = 0;
+	for (i = 0; i < s_ldapexpr_cmp->count; ++i) {
+		if (!s_ldapexpr_cmp || !s_ldapexpr_cmp->arr[i].hook || !s_ldapexpr_cmp->arr[i].cmp_key)
+			continue;
+		ldapexpr_debug("f: %s, cmpk: %s\n", f->s.subject, s_ldapexpr_cmp->arr[i].cmp_key);
+		if (!strcmp(f->s.subject, s_ldapexpr_cmp->arr[i].cmp_key)) {
+
+			return s_ldapexpr_cmp->arr[i].hook(f, data);
 		}
-	} else if (!strcmp("dst_ip", f->s.subject)) {
-		
-		char buff[128] = {0};
-		snprintf(buff, sizeof(buff)-1, "%u.%u.%u.%u", NIPQUAD(sess->dst_ip.addr_ip));
-		buff[sizeof(buff)-1] = '\0';
-		
-		if (!strcmp(buff, f->s.value)) {
-			ldapexpr_debug("catch dst_ip:%s\n", buff);
-			return 0;
-		}
-		
-	} else if (!strcmp("src_port", f->s.subject)) {
-		
-		uint16_t l = strtol(f->s.value, NULL, 0);
-		if (ntohs(l) == sess->src_port) {
-			ldapexpr_debug("catch src_port:%u\n", l);
-			return 0;
-		}
-			
-	} else if (!strcmp("dst_port", f->s.subject)) {
-		
-		uint16_t l = strtol(f->s.value, NULL, 0);
-		if (ntohs(l) == sess->dst_port) {
-			ldapexpr_debug("catch dst_port:%u\n", l);
-			return 0;
-		}
-			
-	} else if (!strcmp("transport", f->s.subject)) {
-		//ldapexpr_debug("detect transport: start: %s\n", f->s.subject);
-		switch (sess->transport) {
-			case SESSION_TRANSPORT_TCP:
-				if (!strcmp("TCP", f->s.value)) {
-					ldapexpr_debug("catch transport:%s\n", f->s.value);
-					return 0;
-				}
-				break;
-			case SESSION_TRANSPORT_UDP:
-				if (!strcmp("UDP", f->s.value)) {
-					ldapexpr_debug("catch transport:%s\n", f->s.value);
-					return 0;
-				}
-				break;
-			case SESSION_TRANSPORT_ICMP: 
-				if (!strcmp("ICMP", f->s.value)) {
-					ldapexpr_debug("catch transport:%s\n", f->s.value);
-					return 0;
-				}
-				break;
-			default:
-				ldapexpr_debug("SESSION_TRANSPORT_UNKNOW\n");
-				return -1;
-		}
-	} 
-	ldapexpr_debug("detect fail:%s %s\n", f->s.subject, f->s.value);
-	
-	return 1;
+	}
+
+	return -1;
 }
 
-// return 0 匹配成功，其他：匹配失败
-static int filter_catpcap(filter_st *f, int s, session_t *sess)
+/** 
+ * func: 添加新的字段比较回调
+ * return 0 添加成功
+ *       -1 添加失败
+ *
+ */
+int add_ldapexpr_cmp(ldapexpr_hook_kv_t *new_ldapexpr_hook)
 {
-	if (!f || !sess)
+	if (!new_ldapexpr_hook) {
+		ldapexpr_debug("arg fail\n");
+		return -1;
+	}
+	ldapexpr_cmp_t *new_ldapexpr_cmp = NULL;
+#define GET_LDAPEXPR_SIZE(count) (sizeof(ldapexpr_cmp_t)+sizeof(ldapexpr_hook_kv_t)*(count))	
+	if (!s_ldapexpr_cmp) {
+		new_ldapexpr_cmp = (ldapexpr_cmp_t *)malloc(GET_LDAPEXPR_SIZE(1));
+		if (!new_ldapexpr_cmp) {
+			ldapexpr_debug("malloc fail\n");
+			return -1;
+		}
+		new_ldapexpr_cmp->count = 1;
+		new_ldapexpr_cmp->arr[0] = *new_ldapexpr_hook;
+		s_ldapexpr_cmp = new_ldapexpr_cmp;
+	} else {
+		ldapexpr_cmp_t *old_ldapexpr_cmp = s_ldapexpr_cmp;
+		new_ldapexpr_cmp = (ldapexpr_cmp_t *)malloc(GET_LDAPEXPR_SIZE(old_ldapexpr_cmp->count + 1));
+		if (!new_ldapexpr_cmp) {
+			ldapexpr_debug("malloc fail\n");
+			return -1;
+		}
+		memcpy(new_ldapexpr_cmp, old_ldapexpr_cmp, GET_LDAPEXPR_SIZE(old_ldapexpr_cmp->count));
+
+		new_ldapexpr_cmp->arr[old_ldapexpr_cmp->count] = *new_ldapexpr_hook;
+		new_ldapexpr_cmp->count = old_ldapexpr_cmp->count + 1;
+		s_ldapexpr_cmp = new_ldapexpr_cmp;
+
+		free(old_ldapexpr_cmp);
+	}
+
+	return 0;	
+}
+
+
+
+// return 0 匹配成功，其他：匹配失败
+static int filter_catpcap(filter_st *f, void *data)
+{
+	if (!f || !data)
 		return -2;
+
 	
 	int ret_left = 0;
 	int ret_right = 0;
 	
 	switch (f->type) {
 		case FT_AND:
-			ret_left = filter_catpcap(f->m.left, s + 1, sess);
-			ret_right = filter_catpcap(f->m.right, s + 1, sess);
+			ret_left = filter_catpcap(f->m.left, data);
+			ret_right = filter_catpcap(f->m.right, data);
 			if ((!ret_left) && (!ret_right)) 
 				return 0;
+			ldapexpr_debug("ret_left = %d, right_left = %d\n", ret_left, ret_right);
 			break;
 		case FT_OR:
-			ret_left = filter_catpcap(f->m.left, s + 1, sess);
-			ret_right = filter_catpcap(f->m.right, s + 1, sess);
+			ret_left = filter_catpcap(f->m.left, data);
+			ret_right = filter_catpcap(f->m.right, data);
 			if ((!ret_left) || (!ret_right))
 				return 0;
 			break;
 		case FT_NOT:
-			ret_left = filter_catpcap(f->m.left, s + 1, sess);
+			ret_left = filter_catpcap(f->m.left, data);
 			if (1 == ret_left)
 				return 0;
 			break;
 		case FT_EQ:
-			return catpcap_cmp_eq(f, s, sess);
 		case FT_NE:
 		case FT_LT:
 		case FT_GT:
 		case FT_LTE:
 		case FT_GTE:
+			return ldapexpr_cmp(f, data);
 		default:
 			ldapexpr_debug("CAN'T USE f->type");
 			return -1;
@@ -308,9 +311,11 @@ static int filter_catpcap(filter_st *f, int s, session_t *sess)
 }
 
 // return 0匹配成功，其他匹配失败
-int filter_check(filter_st *f, session_t *sess)
+int filter_check(filter_st *f, void *data)
 {
-	return filter_catpcap(f, 0, sess);
+	int ret = filter_catpcap(f, data);
+	ldapexpr_debug("ret:%d\n", ret);
+	return ret;
 }
 
 /* 查看filter */

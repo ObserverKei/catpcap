@@ -11,6 +11,7 @@
 
 #include "catpcap.h"
 #include "ldapexpr.h"
+#include "ldap.h"
 
 #define catpcap_debug(fmt, ...) do {\
 		if (g_catpcap_debug_enable) printf("%s %s (%d) "fmt,__FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);\
@@ -66,7 +67,7 @@ static void print_packet(int pkti, const l2_head_st *l2h, const struct iphdr *ip
 		.skbdir = SESSION_SKBDIR_UNKNOW,
 		.hander = hander,
 	};
-	if (!filt || (filt && !filter_check(filt, &sess)))
+	if (!filt || (filt && !filter_check(filt, (void *)&sess)))
 		hook(hander, &sess, sess.skbdir, data, ldata);
 	/* catpcap_debug("%d--\n%s, %u.%u.%u.%u:%u->%u.%u.%u.%u:%u\nuser data len: %d\n", pkti, tcph ? "TCP":"UDP", 
 			NIPQUAD(iph->saddr), tcph ? ntohs(tcph->source) : ntohs(udph->source), 
@@ -90,9 +91,13 @@ int catpcap_file(const char *file_name, const char *policy, p_catpcap_hook_t *ho
 	
 	filter_st *filt = NULL;
 	if (policy) {
-		filt = filter_parse(policy);
+		filt = filter_init(policy);
 		if (!filt) {
 			catpcap_debug("filt is null\n");
+			goto fail;
+		}
+		if (0 != ldap_init()) {
+			catpcap_debug("ldap fail");
 			goto fail;
 		}
 	}

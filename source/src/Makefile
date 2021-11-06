@@ -5,9 +5,11 @@ OUTDIR := _out
 TESTFILE := $(wildcard unittest/*.c) 
 
 OBHS=$(wildcard *.c)
-INCLUDES += -I../include -I./unittest
+INCLUDES += -I../include -I./unittest -I../../tools/ldapexpr/
 LIBS = 
 PRIVATE_FLAG += -shared #-Wl
+PRIVATE_COM_CODE += ../../tools/ldapexpr/ldapexpr.c
+OBHS += $(PRIVATE_COM_CODE)
 
 $(TARGET):$(OBHS:.c=.o)
 	$(CC) -o $(OUTDIR)/$@ $^ $(FLAG) $(PRIVATE_FLAG) $(INCLUDES) $(LIBS)
@@ -43,7 +45,7 @@ demo: $(OUTDIR)/demo.o $(OUTDIR)/$(OBHS:.c=.o)
 	echo "usg: $(OUTDIR)/demo '(src_port=481)' unittest/1.pcap"
 
 memcheck: demo
-	valgrind --leak-check=full --show-reachable=yes --trace-children=yes --log-file="$(OUTDIR)/valgrind_log.txt" $(OUTDIR)/demo unittest/1.pcap && cat $(OUTDIR)/valgrind_log.txt
+	valgrind --leak-check=full --show-reachable=yes --trace-children=yes --log-file="$(OUTDIR)/valgrind_log.txt" $(OUTDIR)/demo  '(src_port=481)' unittest/1.pcap && cat $(OUTDIR)/valgrind_log.txt
 
 lcov:
 	lcov -d $(OUTDIR)/ -t 'demo' -o 'demo.info' -b $(OUTDIR)/. -c

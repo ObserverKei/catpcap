@@ -43,7 +43,7 @@ make DESTDIR=/outpath install
  * param:
  *	file_array_count	pcap文件数量
  *	file_array			pcap文件数组
- *	policy				ldap表达式，选择如何命中回调，传NULL默认全命中
+ *	policy				LDAP条件触发回调，可传NULL，传NULL默认全触发
  *	hook				p_catpcap_hook_t类型的回调接口
  *	hander				送入回调的私有数据
  * return:
@@ -51,7 +51,22 @@ make DESTDIR=/outpath install
  *	 0: 执行成功
  *
 **/
-int catpcap(int file_array_count, char **file_array, const char *policy, p_catpcap_hook_t *hook, void *hander);
+int catpcap(int file_array_count, char **file_array, p_catpcap_hook_t *hook, void *hander);
+```
+
+如果有新增字段的比较需求，可以使用 add_ldapexpr_cmp 添加新的比较接口，
+参考用法见 source/src/ldap.c
+
+```
+/** 
+ * func: 添加新的字段比较回调
+ * param:
+ *        new_ldapexpr_hook_kv  需要注册的比较接口
+ * return 0 添加成功
+ *       -1 添加失败
+ *
+ */
+int add_ldapexpr_cmp(ldapexpr_hook_kv_t *new_ldapexpr_hook_kv);
 ```
 
 ## 使用示例

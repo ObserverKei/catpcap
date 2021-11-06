@@ -7,8 +7,6 @@ typedef struct hander_st {
 	int flag;
 } hander_t;
 
-
-
 int catpcap_hook(void *hander, session_t *sess, uint8_t dir, const char *data, uint16_t data_len) {
 	if (!hander || !data || !sess)
 		return -1;
