@@ -15,7 +15,7 @@ typedef union addr_ip_st{
 
 typedef struct l3_addr_st {
 	union {
-//#define addr_ip  ip.ipv4[3]		//会把使用者的同名变量替换，先注释掉
+//#define addr_ip  ip.ipv4[3]		//防止把使用者的同名变量替换，先注释掉
 #define addr_ip6 ipv6				//ipv6
 #define addr_all ipv6               //成员
 		uint32_t addr_ip;
@@ -33,6 +33,7 @@ typedef struct l3_addr_st {
 #define SESSION_SKBDIR_UNKNOW		0
 #define SESSION_SKBDIR_TO_SERVER	1
 #define SESSION_SKBDIR_TO_CLIENT	2
+#define SESSION_PACK_CONTINUE		0
 
 #define NIPQUAD(addr) \
 	((const unsigned char *)&addr)[0], \
@@ -50,6 +51,7 @@ typedef struct session_st {
 	uint16_t network;			//ipv4/ipv6
 	uint8_t application;		//http/... 
 	uint8_t skbdir;				//数据包方向 skbdir_to_server/skbdir_to_client/skbdir_unknow
+	uint64_t pks;				//当前处理的是这个文件的第几个数据包
 } session_t;
 
 

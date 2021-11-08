@@ -29,6 +29,7 @@ $(OUTDIR)/demo.o:build
 clean: 
 	rm -rf $(OUTDIR)/$(TARGET)
 	rm -rf $(OUTDIR)/demo
+	rm -rf *.gc*
 
 build:
 	if [ ! -d ${OUTDIR} ]; then install -d ${OUTDIR}; fi
@@ -37,8 +38,8 @@ install:
 	cp $(OUTDIR)/$(TARGET) $(DESTDIR)
 
 test: build
-	$(CC) -D XTEST -o $(OUTDIR)/test $(OBHS) $(TESTFILE) $(INCLUDES) $(LIBS) 
-	$(OUTDIR)/test --fork
+	$(CC) -D XTEST -o $(OUTDIR)/$(TARGET) $(OBHS) $(INCLUDES) $(LIBS) $(FLAG) $(PRIVATE_FLAG) 
+	xtest --so $(OUTDIR)/$(TARGET)
 
 demo: 
 	make

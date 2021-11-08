@@ -47,13 +47,13 @@ typedef struct l2_head_st {
 	uint16_t proto;				/* 三层协议 */
 } l2_head_st;
 
-static void print_packet(int pkti, const l2_head_st *l2h, const struct iphdr *iph, 
+static int print_packet(uint64_t pkti, const l2_head_st *l2h, const struct iphdr *iph, 
 						 const struct tcphdr *tcph, const struct udphdr *udph,
 						 const char *data, uint16_t ldata, filter_st *filt, p_catpcap_hook_t *hook, void *hander)
 {
 	if (!iph || (!tcph && !udph)) {
 		catpcap_debug("arg fail\n");
-		return;
+		return -1;
 	}
 
 	session_t sess = {
@@ -65,42 +65,26 @@ static void print_packet(int pkti, const l2_head_st *l2h, const struct iphdr *ip
 		.network = SESSION_NETWORK_IPV4,
 		.application = SESSION_APPLICATION_UNKNOW,
 		.skbdir = SESSION_SKBDIR_UNKNOW,
+		.pks = pkti,
 		.hander = hander,
 	};
 	if (!filt || (filt && !filter_check(filt, (void *)&sess)))
-		hook(hander, &sess, sess.skbdir, data, ldata);
+		return hook(hander, &sess, sess.skbdir, data, ldata);
 	/* catpcap_debug("%d--\n%s, %u.%u.%u.%u:%u->%u.%u.%u.%u:%u\nuser data len: %d\n", pkti, tcph ? "TCP":"UDP", 
 			NIPQUAD(iph->saddr), tcph ? ntohs(tcph->source) : ntohs(udph->source), 
 			NIPQUAD(iph->daddr), tcph ? ntohs(tcph->dest) : ntohs(udph->dest), ldata);
 	*/
+	
+	return 0;
 }
-
-int catpcap_file(const char *file_name, const char *policy, p_catpcap_hook_t *hook, void *hander)
+//packet_idx 为0时，默认遍历整个数据包文件。非0时，从pcap文件的第packet_idx个包开始处理，如果hook返回0，则继续处理下一个包。
+int catpcap_file(const char *file_name, FILE *fp, filter_st *filt, p_catpcap_hook_t *hook, void *hander, size_t packet_idx)
 {
-	
-	if (!file_name) {
-		catpcap_debug("file_name is null\n");
+	if (!file_name){
+		catpcap_debug("catpcap_file file_name is NULL\n");
 		return -1;
 	}
-	
-	FILE *fp = fopen(file_name, "rb");
-	if (!fp) {
-		catpcap_debug("file fp is null, try help\n");
-		return -1;
-	}
-	
-	filter_st *filt = NULL;
-	if (policy) {
-		filt = filter_init(policy);
-		if (!filt) {
-			catpcap_debug("filt is null\n");
-			goto fail;
-		}
-		if (0 != ldap_init()) {
-			catpcap_debug("ldap fail");
-			goto fail;
-		}
-	}
+	catpcap_debug("catpcap_file start %s\n", file_name);
 	
 	pcap_info_st pi;
 	if (fread(&pi, sizeof(pi), 1, fp) != 1) {
@@ -119,20 +103,24 @@ int catpcap_file(const char *file_name, const char *policy, p_catpcap_hook_t *ho
 	}
 	
 	packet_head_st head;
-	int pkt_counter;
+	uint64_t pkt_counter;
 	
-	for (pkt_counter = 1; fread(&head, sizeof(head), 1, fp) == 1; ++pkt_counter) {
+	for (pkt_counter = 1; fread(&head, sizeof(head), 1, fp) == 1; ++pkt_counter) {		
 		if (head.caplen > pi.snaplen || head.caplen > MAX_PACKET_LEN) {
-			catpcap_debug("Packet %d: Invalid packet head(caplen: %u > snaplen: %u)\n",
+			catpcap_debug("Packet %ld: Invalid packet head(caplen: %u > snaplen: %u)\n",
 				pkt_counter, head.caplen, pi.snaplen);
 			goto fail;
 		}
 		
 		char data[MAX_PACKET_LEN];
 		if (fread(data, 1, head.caplen, fp) != head.caplen) {
-			catpcap_debug("Packet %d: Read packet data failed\n", pkt_counter);
+			catpcap_debug("Packet %ld: Read packet data failed\n", pkt_counter);
 			goto fail;
 		}
+		
+		/* 跳过不需要处理的数据包 */
+		if (packet_idx && pkt_counter < packet_idx)
+			continue;
 		
 		char *curr = data;
 		l2_head_st *l2hdr = (l2_head_st *)curr;
@@ -164,19 +152,15 @@ int catpcap_file(const char *file_name, const char *policy, p_catpcap_hook_t *ho
 		
 		const char *udata = curr;
 		uint16_t ldata = ntohs(iph->tot_len) - (curr - (char *)iph);
-		print_packet(pkt_counter, l2hdr, iph, tcph, udph, udata, ldata, filt, hook, hander);
+		if ((SESSION_PACK_CONTINUE != print_packet(pkt_counter, l2hdr, iph, tcph, udph, udata, ldata, filt, hook, hander)) && packet_idx) 
+			return 0;
 	}
-	filter_destroy(filt);
-	fclose(fp);
 	
 	return 0;
 	
 fail:
 	
-	catpcap_debug("exit fail\n");
-	filter_destroy(filt);
-	fclose(fp);
-	
+	catpcap_debug("exit fail\n");	
 	return 1;
 }
 void catpcap_help(void)
@@ -190,41 +174,132 @@ void catpcap_help(void)
 	catpcap_debug("\t  \t=TCP\n");
 	catpcap_debug("\t  \t=UDP\n");
 }
+#define CATPCAP_FILE_MAX 10 /* 最大支持处理文件数量 */
+typedef struct catpcap_private_st {
+	FILE *fp;
+	const char *file_name;
+	filter_st *filt;
+} catpcap_private_t;
+static catpcap_private_t s_catpcap_private[CATPCAP_FILE_MAX] = {0};
 
-
-int catpcap(int file_array_count, char **file_array, const char *policy, p_catpcap_hook_t *hook, void *hander)
+int catpcap_init(int file_array_count, char **file_array, const char *policy)
 {
-	if (!file_array) {
+
+	if (!file_array) {//LDAP(policy) 可以为空
 		catpcap_debug("file_array is null\n");
 		catpcap_help();
 		return -1;
 	}
+	if (file_array_count > CATPCAP_FILE_MAX) {
+		catpcap_debug("init fail, file_count:%d > %d \n", file_array_count, CATPCAP_FILE_MAX);
+		return -1;
+	}
 	if (!strcmp("help", file_array[0])) {
 		catpcap_help();
+		return 0;
+	}
+	
+	int i = 0;
+	for (i = 0; (i < file_array_count) && (i < CATPCAP_FILE_MAX); ++i) {
+		if (file_array[i]) {
+			FILE *fp = fopen(file_array[i], "rb");
+			if (!fp) {
+				catpcap_debug("file fp is null, try help\n");
+				goto init_fail;
+			}
+			
+			filter_st *filt = NULL;
+			if (policy) {
+				filt = filter_init(policy);
+				if (!filt) {
+					catpcap_debug("filt is null\n");
+					goto init_fail;
+				}
+				if (0 != ldap_init()) {
+					catpcap_debug("ldap fail");
+					goto init_fail;
+				}
+			}
+			s_catpcap_private[i].file_name = file_array[i];
+			s_catpcap_private[i].fp = fp;
+			s_catpcap_private[i].filt = filt;
+		} else {
+			catpcap_debug("file_array[%d] is null", i);
+			goto init_fail;
+		}
+	}
+
+	return 0;
+	
+init_fail:
+	catpcap_destroy();
+	return -1;
+}
+
+void catpcap_destroy(void)
+{
+	int i = 0;
+	for (i = 0; i < sizeof(s_catpcap_private)/sizeof(s_catpcap_private[0]); ++i) {
+		if (s_catpcap_private[i].fp)
+			fclose(s_catpcap_private[i].fp);
+		s_catpcap_private[i].fp = NULL;
+		if (s_catpcap_private[i].filt)
+			filter_destroy(s_catpcap_private[i].filt);
+		s_catpcap_private[i].filt = NULL;
+		s_catpcap_private[i].file_name = NULL;
+	}
+}
+
+int catpcap_idx(size_t file_idx, size_t pcaket_idx, p_catpcap_hook_t *hook, void *hander)
+{
+	if (!hook) {//hander 可以为NULL
+		catpcap_debug("hook is null\n");
+		catpcap_help();
+		return -1;
+	}
+	int ret = 0;	
+
+	if (s_catpcap_private[file_idx].fp) {//s_catpcap_private[file_idx].filt 未配置策略时可以为NULL
+		if (0 != catpcap_file(s_catpcap_private[file_idx].file_name, s_catpcap_private[file_idx].fp, 
+				s_catpcap_private[file_idx].filt, hook, hander, pcaket_idx)) {
+			ret = -1;
+		}
+	} 
+	
+	return ret;
+
+}
+
+int catpcap(p_catpcap_hook_t *hook, void *hander)
+{
+	catpcap_debug("catpcap start hook(%p) \n", hook);
+	if (!hook) {//hander 可以为NULL
+		catpcap_debug("hook is null\n");
+		catpcap_help();
+		return -1;
 	}
 	int ret = 0;
 	
 	int i = 0;
-	for (i = 0; i < file_array_count; ++i) {
-		if (file_array[i]) {
-			if (0 != catpcap_file(file_array[i], policy, hook, hander)) {
+	for (i = 0; i < sizeof(s_catpcap_private)/sizeof(s_catpcap_private[0]); ++i) {
+		if (s_catpcap_private[i].fp) {//s_catpcap_private[i].filt 未配置策略时可以为NULL
+			if (0 != catpcap_file(s_catpcap_private[i].file_name, s_catpcap_private[i].fp, 
+					s_catpcap_private[i].filt, hook, hander, 0)) {
 				ret = -1;
 			}
-		} else {
-			catpcap_debug("file_array[%d] is null", i);
-			ret = -1;
-		}
+		} 
 	}
 	
 	return ret;
 }
-
 
 #ifdef	XTEST
 
 #include <assert.h>
 #include <errno.h>
 #include "xtest.h"
+
+#define MAX_PACKET_COUNT 331
 
 typedef struct hander_st {
 	int flag;
@@ -235,34 +310,47 @@ int catpcap_hook(void *hander, session_t *sess, uint8_t dir, const char *data, u
 		return -1;
 	hander_t *ph = (hander_t *)hander;
 
-	printf("--\n%s, %u.%u.%u.%u:%u->%u.%u.%u.%u:%u\nuser data len: %d, flag: %d\n", sess->transport == SESSION_TRANSPORT_TCP ? "TCP":"UDP", 
+	catpcap_debug("-%ld- %s, %u.%u.%u.%u:%u->%u.%u.%u.%u:%u\nuser data len: %d, flag: %d\n", 
+			sess->pks, sess->transport == SESSION_TRANSPORT_TCP ? "TCP":"UDP", 
 			NIPQUAD(sess->src_ip.addr_ip), ntohs(sess->src_port), 
 			NIPQUAD(sess->dst_ip.addr_ip), ntohs(sess->dst_port), data_len, ph->flag);
-	
-	
+
+	if (sess->pks > MAX_PACKET_COUNT)
+		return -1;
 
 	return 0;
 }
 
-//  完成使用场景的测试
-TEST(test, scene)
+void set_up()
 {
-	hander_t flag = { .flag = 1};
-	char *file[] = {"unittest/1.pcap", "2"};
-	assert(-1 == catpcap(sizeof(file)/sizeof(file[0]), file, NULL, catpcap_hook, (void *)&flag));
+	g_catpcap_debug_enable = 0;
+}
+
+void tear_down()
+{
+	g_catpcap_debug_enable = 1;
 }
 
 //  完成使用场景的测试
-TEST(test, one)
+TEST_F(test, init_fail, set_up, tear_down)
+{
+	char *file[] = {"unittest/1.pcap", "2"};
+	assert(0 > catpcap_init(sizeof(file)/sizeof(file[0]), file, NULL));
+	catpcap_destroy();
+}
+
+//  完成使用场景的测试
+TEST_F(test, catpcap_load_sucess, set_up, tear_down)
 {
 	hander_t flag = { .flag = 1};
 	char *file[] = {"unittest/1.pcap"};
-	assert(0 == catpcap(sizeof(file)/sizeof(file[0]), file, NULL, catpcap_hook, (void *)&flag));
-}
-
-int main(int argc, char **argv)
-{
-	return xtest_start_test(argc, argv);
+	assert(0 == catpcap_init(sizeof(file)/sizeof(file[0]), file, NULL));
+	assert(0 == catpcap(catpcap_hook, (void *)&flag));
+	catpcap_destroy();
+	
+	assert(0 == catpcap_init(sizeof(file)/sizeof(file[0]), file, "(src_port=481)"));
+	assert(0 == catpcap(catpcap_hook, (void *)&flag));
+	catpcap_destroy();
 }
 
 #endif//XTEST

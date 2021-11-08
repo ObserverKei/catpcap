@@ -7,6 +7,8 @@ LIBS	=
 CFLAGS	= $(FLAG) -Wall $(DEFIN)
 MNAME	= libxtest
 SUFFIX	:= $(shell if [ `uname -o` == 'Cygwin' ]; then echo dll; else echo so; fi)
+OUTDIR ?= _out
+
 INSTALL_DIR := $(shell if [ `uname -o` == 'Cygwin' ]; then echo '/usr/bin'; else echo '/usr/lib'; fi)
 TARGET	= $(MNAME).$(SUFFIX)
  
@@ -29,3 +31,5 @@ install:
 	cp -f $(TARGET) $(INSTALL_DIR)
 	cp -f xtest.h /usr/include
 	
+CUTDIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+include ../../../tools/makefiles/app.mk

@@ -16,6 +16,7 @@ $(TARGET):$(OBHS:.c=.o)
 
 clean: 
 	rm -rf $(OUTDIR)/$(TARGET)
+	rm -rf *.gc*
 
 build:
 	if [ ! -d ${OUTDIR} ]; then install -d ${OUTDIR}; fi

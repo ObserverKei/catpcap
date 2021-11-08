@@ -26,7 +26,7 @@ clean:
 
 install:
 	(cd libxtest && make install)
-	cp -f $(TARGET) /usr/bin && chmod a+x /usr/bin/$(TARGET)
+	cp -f $(OUTDIR)/$(TARGET) /usr/bin && chmod a+x /usr/bin/$(TARGET)
 
 CUTDIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 include ../../tools/makefiles/app.mk
