@@ -26,7 +26,7 @@ int ldap_cmp_src_ip(ldapexpr_ftv_t *ftv, void *data)
 			&ip.ipv4_all[2], &ip.ipv4_all[1], &ip.ipv4_all[0])) {
 		return -2;
 	}
-	//ldap_debug("ip:%u, %u.%u.%u.%u, sip：%u, %u.%u.%u.%u\n", ip.addr_ip, NIPQUAD(ip.addr_ip), src_ip, NIPQUAD(src_ip));
+	//ldap_debug("ip:%u, %u.%u.%u.%u, sip：%u, %u.%u.%u.%u\n", ip.addr_ip, NIPQUAD(ip.addr_ip), sess->src_ip.addr_ip, NIPQUAD(sess->src_ip.addr_ip));
 		
 	switch (ftv->type) {			
 		case FT_EQ:
@@ -233,3 +233,78 @@ int ldap_init(void) {
 
 	return 0;
 }
+
+#ifdef	XTEST
+
+#include <assert.h>
+#include <errno.h>
+#include "xtest.h"
+
+#define IPV4_ADDR_IP_200_200_2_254 3368551166
+#define IPV4_ADDR_IP_200_200_20_141 3368555661
+
+
+session_t s_test_sess = {0};
+
+
+static void set_up()
+{
+	g_ldap_debug_enable = 1;
+	s_test_sess.src_ip.addr_ip = htonl(IPV4_ADDR_IP_200_200_20_141);
+	s_test_sess.dst_ip.addr_ip = htonl(IPV4_ADDR_IP_200_200_2_254);
+	s_test_sess.src_port = htons(80);
+	s_test_sess.dst_port = htons(1234);
+	s_test_sess.transport = SESSION_TRANSPORT_TCP;
+
+}
+
+static void tear_down()
+{
+	g_ldap_debug_enable = 1;
+}
+
+TEST_F(test, ft_eq, set_up, tear_down)
+{
+
+	ldapexpr_ftv_t ftv = {0};
+	ftv.type = FT_EQ;
+	
+	ftv.value = "200.200.2.254";
+	assert(0 == ldap_cmp_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.255";
+	assert(0 != ldap_cmp_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "200.200.20.141";
+	assert(0 == ldap_cmp_src_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.255";
+	assert(0 != ldap_cmp_src_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "200.200.2.254";
+	assert(0 == ldap_cmp_dst_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.255";
+	assert(0 != ldap_cmp_dst_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "80";
+	assert(0 == ldap_cmp_port(&ftv, (void *)&s_test_sess));	
+	ftv.value = "4321";
+	assert(0 != ldap_cmp_port(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "80";
+	assert(0 == ldap_cmp_src_port(&ftv, (void *)&s_test_sess));
+	ftv.value = "8080";
+	assert(0 != ldap_cmp_src_port(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "1234";
+	assert(0 == ldap_cmp_dst_port(&ftv, (void *)&s_test_sess));
+	ftv.value = "99";
+	assert(0 != ldap_cmp_dst_port(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "TCP";
+	assert(0 == ldap_cmp_transport(&ftv, (void *)&s_test_sess));
+	ftv.value = "UDP";
+	assert(0 != ldap_cmp_transport(&ftv, (void *)&s_test_sess));
+}
+
+
+#endif//XTEST
+
