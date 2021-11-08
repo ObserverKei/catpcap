@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 	hander_t flag = { .flag = 1};
 	char **file_array = argv + idx;
 	int file_array_count = argc - idx;
-    
+
 	int ret = catpcap(file_array_count, file_array, policy, catpcap_hook, (void *)&flag);
 	return ret;
 }

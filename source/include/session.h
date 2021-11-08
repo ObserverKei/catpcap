@@ -8,11 +8,19 @@ extern "C" {
 
 #include <stdint.h>
 
+typedef union addr_ip_st{
+	uint32_t addr_ip;
+	uint8_t ipv4_all[4];
+} addr_ip_t;
+
 typedef struct l3_addr_st {
-#define addr_ip  ipv6[3]			//ipv4
+	union {
+//#define addr_ip  ip.ipv4[3]		//会把使用者的同名变量替换，先注释掉
 #define addr_ip6 ipv6				//ipv6
 #define addr_all ipv6               //成员
-	uint32_t ipv6[4];
+		uint32_t addr_ip;
+		uint32_t ipv6[4];
+	};
 } l3_addr_t;
 
 #define SESSION_TRANSPORT_TCP		10 

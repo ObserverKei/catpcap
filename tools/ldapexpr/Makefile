@@ -9,7 +9,7 @@ PRIVATE_FLAG += -shared
 $(TARGET):$(OBHS:.c=.o)
 	make build
 	$(CC) -o $(OUTDIR)/$@ $^ $(FLAG) $(PRIVATE_FLAG) $(INCLUDES) $(LIBS)
-	mv *.o $(OUTDIR)
+	mv *.o *.gc* $(OUTDIR)
 
 %.o:%.c
 	$(CC) -c -o $@ $^ $(FLAG) $(INCLUDES)

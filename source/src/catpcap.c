@@ -166,13 +166,14 @@ int catpcap_file(const char *file_name, const char *policy, p_catpcap_hook_t *ho
 		uint16_t ldata = ntohs(iph->tot_len) - (curr - (char *)iph);
 		print_packet(pkt_counter, l2hdr, iph, tcph, udph, udata, ldata, filt, hook, hander);
 	}
-	
 	filter_destroy(filt);
 	fclose(fp);
 	
 	return 0;
 	
 fail:
+	
+	catpcap_debug("exit fail\n");
 	filter_destroy(filt);
 	fclose(fp);
 	

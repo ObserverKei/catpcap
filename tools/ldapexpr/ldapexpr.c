@@ -13,6 +13,30 @@
 		if (g_ldapexpr_debug_enable) printf("%s %s (%d) "fmt,__FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);\
 	} while (0)
 	
+		
+typedef struct filter_st {
+	ft_type_t type;
+	
+	union {
+		struct {
+			struct filter_st *left;
+			struct filter_st *right;
+		} m;		/* 复合过滤器时使用 */
+		struct {
+			char *subject;
+			char *value;
+		} s;		/* 非复合过滤时使用 */
+	};
+} filter_st;
+
+
+typedef struct ldapexpr_cmp_st {
+	size_t count;
+	ldapexpr_hook_kv_t arr[0];
+} ldapexpr_cmp_t;
+
+static ldapexpr_cmp_t *s_ldapexpr_cmp = NULL;
+
 char g_ldapexpr_debug_enable = 0;
 
 static const char *s_ft_tab[] = {
@@ -50,6 +74,12 @@ static int opr2type(const char *opr)
 	return -1;
 }
 
+static void distroy_ldapexpr_cmp(void)
+{
+	free(s_ldapexpr_cmp);
+	s_ldapexpr_cmp = NULL;
+}
+
 static filter_st *filter_create(int ft)
 {
 	filter_st *ret = calloc(1, sizeof(filter_st));
@@ -60,7 +90,8 @@ static filter_st *filter_create(int ft)
 }
 
 void filter_destroy(filter_st *filt)
-{
+{	
+	distroy_ldapexpr_cmp();
 	if (!filt)
 		return;
 	
@@ -193,28 +224,22 @@ static void filter_debug_(filter_st *f, int s)
 	}
 }
 
-typedef struct ldapexpr_cmp_st {
-	size_t count;
-	ldapexpr_hook_kv_t arr[0];
-} ldapexpr_cmp_t;
-
-static ldapexpr_cmp_t *s_ldapexpr_cmp = NULL;
-
-
 //return -1 is fail, 0 is cmp done
 static int ldapexpr_cmp(filter_st *f, void *data)
 {
 	if (!s_ldapexpr_cmp) 
-		return -1;
+		return -2;
 
 	size_t i = 0;
+	ldapexpr_ftv_t ftv = {0};
 	for (i = 0; i < s_ldapexpr_cmp->count; ++i) {
 		if (!s_ldapexpr_cmp || !s_ldapexpr_cmp->arr[i].hook || !s_ldapexpr_cmp->arr[i].cmp_key)
 			continue;
 		ldapexpr_debug("f: %s, cmpk: %s\n", f->s.subject, s_ldapexpr_cmp->arr[i].cmp_key);
 		if (!strcmp(f->s.subject, s_ldapexpr_cmp->arr[i].cmp_key)) {
-
-			return s_ldapexpr_cmp->arr[i].hook(f, data);
+			ftv.type = f->type;
+			ftv.value = f->s.value;
+			return s_ldapexpr_cmp->arr[i].hook(&ftv, data);
 		}
 	}
 
@@ -231,11 +256,11 @@ int add_ldapexpr_cmp(ldapexpr_hook_kv_t *new_ldapexpr_hook)
 {
 	if (!new_ldapexpr_hook) {
 		ldapexpr_debug("arg fail\n");
-		return -1;
-	}
+		return -2;
+	}	
 	ldapexpr_cmp_t *new_ldapexpr_cmp = NULL;
 #define GET_LDAPEXPR_SIZE(count) (sizeof(ldapexpr_cmp_t)+sizeof(ldapexpr_hook_kv_t)*(count))	
-	if (!s_ldapexpr_cmp) {
+	if (NULL == s_ldapexpr_cmp) {
 		new_ldapexpr_cmp = (ldapexpr_cmp_t *)malloc(GET_LDAPEXPR_SIZE(1));
 		if (!new_ldapexpr_cmp) {
 			ldapexpr_debug("malloc fail\n");
@@ -262,8 +287,6 @@ int add_ldapexpr_cmp(ldapexpr_hook_kv_t *new_ldapexpr_hook)
 
 	return 0;	
 }
-
-
 
 // return 0 匹配成功，其他：匹配失败
 static int filter_catpcap(filter_st *f, void *data)

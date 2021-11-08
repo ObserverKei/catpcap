@@ -14,6 +14,7 @@ TARGET	= $(MNAME).$(SUFFIX)
 
 $(TARGET): $(OBJS)
 	gcc -shared $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
+	mv -f *.gc* $(OUTDIR)
 
 static: $(OBJS)
 	ar -r $(MNAME).a $(OBJS)

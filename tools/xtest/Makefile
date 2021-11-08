@@ -12,6 +12,7 @@ TARGET	= xtest
 $(TARGET): $(OBJS) libxtest
 	if [ ! -d ${OUTDIR} ]; then install -d ${OUTDIR}; fi
 	gcc $(CFLAGS) -o $(OUTDIR)/$(TARGET) $(OBJS) $(LIBS)
+	mv -f *.gc* $(OUTDIR)
 
 libxtest:
 	(cd libxtest && make)
