@@ -49,8 +49,9 @@ demo:
 memcheck: demo
 	valgrind --leak-check=full --show-reachable=yes --trace-children=yes --log-file="$(OUTDIR)/valgrind_log.txt" $(OUTDIR)/demo  '(src_port=481)' unittest/1.pcap && cat $(OUTDIR)/valgrind_log.txt
 
-lcov:
-	lcov -d $(OUTDIR)/ -t 'demo' -o 'demo.info' -b . -c
+lcov: test
+	mv *.gc* $(OUTDIR)
+	lcov -d $(OUTDIR)/ -t 'xtest --so $(OUTDIR)/$(TARGET)' -o 'demo.info' -b . -c
 	genhtml -o $(OUTDIR)/demo_web demo.info
 
 .PHONY: def clean test memcheck lcov build demo

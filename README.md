@@ -26,9 +26,13 @@ make
 
 ### 安装
 
-安装路径：/usr/lib/ 
+安装路径：/usr/ 
 ```
-make install
+make ; make install
+```
+如果没有权限，使用
+```
+make ; sudo make install
 ```
 如果想手动指定安装路径，可使用：
 ```
@@ -75,6 +79,8 @@ int add_ldapexpr_cmp(ldapexpr_hook_kv_t *new_ldapexpr_hook_kv);
 
 过滤 1.pcap 中 所有 UDP 协议的包 (支持使用支持LDAP的=符号过滤src_ip,dst_ip,src_port,dst_port,transport)
 ```
+cd source/src/
+make demo
 demo (transport=UDP) 1.pcap
 ```
 

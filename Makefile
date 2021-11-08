@@ -3,7 +3,7 @@ include tools/makefiles/env.mk
 endif
 
 BASEDIR := $(shell pwd)
-OUTDIR ?= _out
+OUTDIR := _out
 
 all: build
 
@@ -24,4 +24,6 @@ test:
 
 install:
 	if [ ! -d ${DESTDIR} ]; then install -d ${DESTDIR}; fi
-	cp -rvf $(OUTDIR)/* $(DESTDIR)
+	cd tools/ldapexpr && $(MAKE) install
+	cd tools/xtest && $(MAKE) install
+	cd source/src && $(MAKE) install

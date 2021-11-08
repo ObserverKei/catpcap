@@ -203,7 +203,32 @@ int ldap_cmp_transport(ldapexpr_ftv_t *ftv, void *data)
 				default:
 					ldap_debug(" transport: UNKNOW\n");
 					return -1;
-			}			
+			}
+			break;
+		case FT_NE:
+			switch (sess->transport) {
+				case SESSION_TRANSPORT_TCP:
+					if (strcmp("TCP", ftv->value)) {
+						ldap_debug("catch transport:%s\n", ftv->value);
+						return 0;
+					}
+					break;
+				case SESSION_TRANSPORT_UDP:
+					if (strcmp("UDP", ftv->value)) {
+						ldap_debug("catch transport:%s\n", ftv->value);
+						return 0;
+					}				
+					break;
+				case SESSION_TRANSPORT_ICMP: 
+					if (strcmp("ICMP", ftv->value)) {
+						ldap_debug("catch transport:%s\n", ftv->value);
+						return 0;
+					}
+					break;
+				default:
+					ldap_debug(" transport: UNKNOW\n");
+					return -1;
+			}
 			break;
 		default:
 			return -1;
@@ -301,8 +326,225 @@ TEST_F(test, ft_eq, set_up, tear_down)
 
 	ftv.value = "TCP";
 	assert(0 == ldap_cmp_transport(&ftv, (void *)&s_test_sess));
+	s_test_sess.transport = SESSION_TRANSPORT_UDP;
 	ftv.value = "UDP";
+	assert(0 == ldap_cmp_transport(&ftv, (void *)&s_test_sess));
+	s_test_sess.transport = SESSION_TRANSPORT_ICMP;
+	ftv.value = "ICMP";
+	assert(0 == ldap_cmp_transport(&ftv, (void *)&s_test_sess));
+}
+
+TEST_F(test, ft_ne, set_up, tear_down)
+{
+	ldapexpr_ftv_t ftv = {0};
+	ftv.type = FT_NE;
+	
+	ftv.value = "200.200.2.254";
+	assert(0 == ldap_cmp_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.254";
+	assert(0 == ldap_cmp_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "200.200.20.141";
+	assert(0 != ldap_cmp_src_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.255";
+	assert(0 == ldap_cmp_src_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "200.200.2.254";
+	assert(0 != ldap_cmp_dst_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.255";
+	assert(0 == ldap_cmp_dst_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "80";
+	assert(0 == ldap_cmp_port(&ftv, (void *)&s_test_sess));	
+	ftv.value = "4321";
+	assert(0 == ldap_cmp_port(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "80";
+	assert(0 != ldap_cmp_src_port(&ftv, (void *)&s_test_sess));
+	ftv.value = "8080";
+	assert(0 == ldap_cmp_src_port(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "1234";
+	assert(0 != ldap_cmp_dst_port(&ftv, (void *)&s_test_sess));
+	ftv.value = "99";
+	assert(0 == ldap_cmp_dst_port(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "TCP";
 	assert(0 != ldap_cmp_transport(&ftv, (void *)&s_test_sess));
+	s_test_sess.transport = SESSION_TRANSPORT_ICMP;
+	ftv.value = "UDP";
+	assert(0 == ldap_cmp_transport(&ftv, (void *)&s_test_sess));
+	s_test_sess.transport = SESSION_TRANSPORT_UDP;
+	ftv.value = "ICMP";
+	assert(0 == ldap_cmp_transport(&ftv, (void *)&s_test_sess));
+}
+
+TEST_F(test, ft_lt, set_up, tear_down)
+{
+	ldapexpr_ftv_t ftv = {0};
+	ftv.type = FT_LT;
+	
+	ftv.value = "200.200.2.204";
+	assert(0 != ldap_cmp_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.255";
+	assert(0 == ldap_cmp_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "200.200.20.140";
+	assert(0 != ldap_cmp_src_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.20.255";
+	assert(0 == ldap_cmp_src_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "200.200.2.250";
+	assert(0 != ldap_cmp_dst_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.255";
+	assert(0 == ldap_cmp_dst_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "70";
+	assert(0 != ldap_cmp_port(&ftv, (void *)&s_test_sess));	
+	ftv.value = "4321";
+	assert(0 == ldap_cmp_port(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "60";
+	assert(0 != ldap_cmp_src_port(&ftv, (void *)&s_test_sess));
+	ftv.value = "8080";
+	assert(0 == ldap_cmp_src_port(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "1230";
+	assert(0 != ldap_cmp_dst_port(&ftv, (void *)&s_test_sess));
+	ftv.value = "9900";
+	assert(0 == ldap_cmp_dst_port(&ftv, (void *)&s_test_sess));
+}
+
+TEST_F(test, ft_gt, set_up, tear_down)
+{
+	ldapexpr_ftv_t ftv = {0};
+	ftv.type = FT_GT;
+	
+	ftv.value = "200.200.2.250";
+	assert(0 == ldap_cmp_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.20.250";
+	assert(0 != ldap_cmp_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "200.200.20.144";
+	assert(0 != ldap_cmp_src_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.255";
+	assert(0 == ldap_cmp_src_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "200.200.2.255";
+	assert(0 != ldap_cmp_dst_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.250";
+	assert(0 == ldap_cmp_dst_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "8500";
+	assert(0 != ldap_cmp_port(&ftv, (void *)&s_test_sess));	
+	ftv.value = "43";
+	assert(0 == ldap_cmp_port(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "801";
+	assert(0 != ldap_cmp_src_port(&ftv, (void *)&s_test_sess));
+	ftv.value = "8";
+	assert(0 == ldap_cmp_src_port(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "12340";
+	assert(0 != ldap_cmp_dst_port(&ftv, (void *)&s_test_sess));
+	ftv.value = "9";
+	assert(0 == ldap_cmp_dst_port(&ftv, (void *)&s_test_sess));
+}
+
+TEST_F(test, ft_lte, set_up, tear_down)
+{
+	ldapexpr_ftv_t ftv = {0};
+	ftv.type = FT_LTE;
+	
+	ftv.value = "200.200.2.204";
+	assert(0 != ldap_cmp_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.254";
+	assert(0 == ldap_cmp_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.255";
+	assert(0 == ldap_cmp_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "200.200.20.140";
+	assert(0 != ldap_cmp_src_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.20.141";
+	assert(0 == ldap_cmp_src_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.20.255";
+	assert(0 == ldap_cmp_src_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "200.200.2.250";
+	assert(0 != ldap_cmp_dst_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.254";
+	assert(0 == ldap_cmp_dst_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.255";
+	assert(0 == ldap_cmp_dst_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "70";
+	assert(0 != ldap_cmp_port(&ftv, (void *)&s_test_sess));	
+	ftv.value = "80";
+	assert(0 == ldap_cmp_port(&ftv, (void *)&s_test_sess));	
+	ftv.value = "4321";
+	assert(0 == ldap_cmp_port(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "60";
+	assert(0 != ldap_cmp_src_port(&ftv, (void *)&s_test_sess));
+	ftv.value = "80";
+	assert(0 == ldap_cmp_src_port(&ftv, (void *)&s_test_sess));
+	ftv.value = "8080";
+	assert(0 == ldap_cmp_src_port(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "1230";
+	assert(0 != ldap_cmp_dst_port(&ftv, (void *)&s_test_sess));
+	ftv.value = "1234";
+	assert(0 == ldap_cmp_dst_port(&ftv, (void *)&s_test_sess));
+	ftv.value = "9900";
+	assert(0 == ldap_cmp_dst_port(&ftv, (void *)&s_test_sess));
+}
+
+TEST_F(test, ft_gte, set_up, tear_down)
+{
+	ldapexpr_ftv_t ftv = {0};
+	ftv.type = FT_GTE;
+	
+	ftv.value = "200.200.20.250";
+	assert(0 != ldap_cmp_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.254";
+	assert(0 == ldap_cmp_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.250";
+	assert(0 == ldap_cmp_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "200.200.20.144";
+	assert(0 != ldap_cmp_src_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.20.141";
+	assert(0 == ldap_cmp_src_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.255";
+	assert(0 == ldap_cmp_src_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "200.200.2.255";
+	assert(0 != ldap_cmp_dst_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.254";
+	assert(0 == ldap_cmp_dst_ip(&ftv, (void *)&s_test_sess));
+	ftv.value = "200.200.2.250";
+	assert(0 == ldap_cmp_dst_ip(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "8500";
+	assert(0 != ldap_cmp_port(&ftv, (void *)&s_test_sess));	
+	ftv.value = "80";
+	assert(0 == ldap_cmp_port(&ftv, (void *)&s_test_sess));	
+	ftv.value = "43";
+	assert(0 == ldap_cmp_port(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "801";
+	assert(0 != ldap_cmp_src_port(&ftv, (void *)&s_test_sess));
+	ftv.value = "80";
+	assert(0 == ldap_cmp_src_port(&ftv, (void *)&s_test_sess));
+	ftv.value = "8";
+	assert(0 == ldap_cmp_src_port(&ftv, (void *)&s_test_sess));
+
+	ftv.value = "12340";
+	assert(0 != ldap_cmp_dst_port(&ftv, (void *)&s_test_sess));
+	ftv.value = "1234";
+	assert(0 == ldap_cmp_dst_port(&ftv, (void *)&s_test_sess));
+	ftv.value = "9";
+	assert(0 == ldap_cmp_dst_port(&ftv, (void *)&s_test_sess));
 }
 
 

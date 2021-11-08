@@ -16,7 +16,6 @@ TARGET	= $(MNAME).$(SUFFIX)
 
 $(TARGET): $(OBJS)
 	gcc -shared $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
-	mv -f *.gc* $(OUTDIR)
 
 static: $(OBJS)
 	ar -r $(MNAME).a $(OBJS)
@@ -25,7 +24,7 @@ debug:
 	gcc -g -Wall -shared $(DEFIN) -o $(TARGET) $(CFILES) $(LIBS)
 
 clean:
-	rm -f *.o *.output *.stackdump $(TARGET) $(MNAME).a $(MNAME).so $(MNAME).dll
+	rm -f *.o *.output *.stackdump $(TARGET) $(MNAME).a $(MNAME).so $(MNAME).dll *.gc*
 
 install:
 	cp -f $(TARGET) $(INSTALL_DIR)

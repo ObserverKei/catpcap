@@ -11,8 +11,10 @@ endif##($(findstring .so, $(TARGET)),)
 
 ifeq ($(TYPE),so)
 OUTDIR := $(BASEDIR)/_out/lib
+DESTDIR := /usr/lib
 else ifeq ($(TYPE),app)
 OUTDIR := $(BASEDIR)/_out/bin
+DESTDIR := /usr/bin
 endif##($(TYPE),so)
 
 ifeq ($(findstring .c, $(OBJS)),)

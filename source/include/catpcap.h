@@ -8,6 +8,8 @@ extern "C" {
 #include <stdint.h>
 #include "session.h"
 
+#define CATPCAP_FILE_MAX 10 /* 最大支持处理文件数量 */
+
 typedef int p_catpcap_hook_t(void *hander, session_t *sess, uint8_t dir, const char *data, uint16_t data_len);
 
 

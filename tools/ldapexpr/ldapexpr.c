@@ -246,6 +246,14 @@ static int ldapexpr_cmp(filter_st *f, void *data)
 	return -1;
 }
 
+void test_mem(void)
+{
+	char str[10] = {0};
+	int i = 0;
+	while (++i)
+		strcpy("1234567890876543212345", str+i);	
+}
+
 /** 
  * func: 添加新的字段比较回调
  * return 0 添加成功
@@ -259,7 +267,10 @@ int add_ldapexpr_cmp(ldapexpr_hook_kv_t *new_ldapexpr_hook)
 		return -2;
 	}	
 	ldapexpr_cmp_t *new_ldapexpr_cmp = NULL;
-#define GET_LDAPEXPR_SIZE(count) (sizeof(ldapexpr_cmp_t)+sizeof(ldapexpr_hook_kv_t)*(count))	
+#define GET_LDAPEXPR_SIZE(count) (sizeof(ldapexpr_cmp_t)+sizeof(ldapexpr_hook_kv_t)*(count))
+#ifdef	_MEMCHECK
+	//test_mem();
+#endif//_MEMCHECK
 	if (NULL == s_ldapexpr_cmp) {
 		new_ldapexpr_cmp = (ldapexpr_cmp_t *)malloc(GET_LDAPEXPR_SIZE(1));
 		if (!new_ldapexpr_cmp) {

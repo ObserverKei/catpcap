@@ -23,8 +23,14 @@ build:
 	
 install:
 	cp $(OUTDIR)/$(TARGET) $(DESTDIR)
+	
+meminstall:
+	make build
+	$(CC) -D _MEMCHEK -o $(OUTDIR)/$(TARGET) $^ $(FLAG) $(PRIVATE_FLAG) $(INCLUDES) $(LIBS)
+	make install
+	
 
-.PHONY: clean 
+.PHONY: clean memcheck
 
 	
 CUTDIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))

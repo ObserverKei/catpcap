@@ -1,7 +1,7 @@
 MYDIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 include $(MYDIR)/env.mk
 
-.PHONY: all clean
+.PHONY: all clean install 
 
 all: $(SUBDIRS:=.all)
 
@@ -18,5 +18,5 @@ test: $(SUBDIRS:=.test)
 %.test:
 	cd $* && $(MAKE) test
 
-%.install:
+%.install: $(SUBDIRS:=.install)
 	cd $* && $(MAKE) install
